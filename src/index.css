@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Saira", sans-serif;
+  --font-sans: "IBM Plex Sans", system-ui, sans-serif;
+
+  --color-brand: #e4002b;
+  --color-brand-soft: #ff5c7a;
+  --color-ink: #15171b;
+  --color-ink-2: #2a2d34;
+  --color-body: #374151;
+  --color-muted: #6b7280;
+  --color-faint: #9aa1ac;
+  --color-line: #e6e8ec;
+  --color-line-2: #e3e6ea;
+  --color-surface: #f0f1f4;
+  --color-surface-2: #eef0f3;
+  --color-info: #2563eb;
+  --color-ok: #16a34a;
+}
+
+:root {
+  --duration-fast: 150ms;
+  --duration-normal: 300ms;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--color-body);
+  background: var(--color-surface);
+}
+
+/* Tipografía del contenido del CMS */
+.prosa { color: var(--color-body); font-size: 0.95rem; line-height: 1.7; }
+.prosa h2 { font-family: var(--font-display); font-weight: 700; font-size: 1.2rem; color: var(--color-ink); margin: 1em 0 0.4em; }
+.prosa h3 { font-family: var(--font-display); font-weight: 600; font-size: 1.05rem; color: var(--color-ink); margin: 0.9em 0 0.3em; }
+.prosa p { margin: 0.5em 0; }
+.prosa ul, .prosa ol { margin: 0.5em 0 0.5em 1.4em; }
+.prosa ul { list-style: disc; }
+.prosa ol { list-style: decimal; }
+.prosa a { color: var(--color-brand); text-decoration: underline; }
+.prosa img { max-width: 100%; border-radius: 12px; margin: 0.8em 0; }
+.prosa blockquote { border-left: 3px solid var(--color-brand); padding-left: 1em; color: var(--color-muted); margin: 0.8em 0; }
+
+/* Galería marquesina */
+@keyframes marquesina { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes marquesina-inversa { from { transform: translateX(-50%); } to { transform: translateX(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .galeria-mascara * { animation: none !important; }
+}
+
+/* Entrada del carro en el carrusel del login */
+@keyframes entrada-carro {
+  from { opacity: 0; transform: translateX(60px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Tamaños de imagen elegidos en el editor */
+.prosa img.img-chica { width: 25%; }
+.prosa img.img-media { width: 50%; }
+.prosa img.img-grande { width: 100%; }
