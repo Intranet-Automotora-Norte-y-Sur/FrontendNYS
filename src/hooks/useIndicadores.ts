@@ -1,12 +1,35 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, tokenStore } from '../lib/api';
 
+export type TipoGrafico =
+  | 'numero'
+  | 'contador'
+  | 'medidor'
+  | 'progreso'
+  | 'anillo'
+  | 'barras'
+  | 'linea'
+  | 'dona';
+
+export interface RegistroIndicador {
+  id: number;
+  periodo: string;
+  serie: string;
+  valor: number;
+}
+
 export interface Indicador {
   id: number;
   nombre: string;
+  categoria: string;
+  tipo: TipoGrafico;
+  descripcion: string;
   valor: number;
   unidad: string;
   meta: number | null;
+  orden: number;
+  publicado: boolean;
+  registros: RegistroIndicador[];
   actualizado_en: string;
 }
 

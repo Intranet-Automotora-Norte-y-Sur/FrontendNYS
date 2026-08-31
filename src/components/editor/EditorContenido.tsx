@@ -17,7 +17,7 @@ import Link from '@tiptap/extension-link';
 import { EditorContent, useEditor, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { useEffect, useRef } from 'react';
-import { tokenStore } from '../../lib/api';
+import { api } from '../../lib/api';
 
 interface Props {
   html: string;
@@ -59,12 +59,7 @@ function Barra({ editor }: { editor: Editor }) {
   const subirImagen = async (archivo: File) => {
     const datos = new FormData();
     datos.append('imagen', archivo);
-    const resp = await fetch('/api/contenido/imagenes/', {
-      method: 'POST',
-      body: datos,
-      credentials: 'include',
-      headers: { Authorization: `Bearer ${tokenStore.get()}` },
-    });
+    const resp = await api.postForm('/api/contenido/imagenes/', datos);
     if (resp.ok) {
       const { url } = (await resp.json()) as { url: string };
       editor.chain().focus().setImage({ src: url }).run();

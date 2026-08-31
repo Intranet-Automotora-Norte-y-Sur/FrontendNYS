@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import logo from '../../assets/logo.png';
 import { useAuth } from '../../hooks/useAuth';
+import { CambiarContrasena } from '../cuenta/CambiarContrasena';
 import { Asistente } from '../asistente/Asistente';
 import { ToastEnlaces } from './ToastEnlaces';
 import { Icono, type NombreIcono } from '../ui/Icono';
@@ -27,13 +28,13 @@ const GRUPOS: { titulo: string; items: ItemNav[] }[] = [
       { a: '/talento-humano', icono: 'personas', txt: 'Talento Humano' },
       { a: '/enlaces', icono: 'enlace', txt: 'Enlaces Toyota' },
       { a: '/academia', icono: 'birrete', txt: 'Academia' },
-      { a: '/fondo-fenys', icono: 'billetera', txt: 'Fondo Fenys' },
       { a: '/beneficios', icono: 'regalo', txt: 'Beneficios' },
     ],
   },
   {
     titulo: 'Personal',
     items: [
+      { a: '/nuestra-gente', icono: 'personas', txt: 'Nuestra gente' },
       { a: '/certificados', icono: 'documento', txt: 'Mis certificados' },
       { a: '/sugerencias', icono: 'chat', txt: 'Sugerencias' },
     ],
@@ -47,18 +48,18 @@ const TITULOS: Record<string, { titulo: string; sub: string }> = {
   '/certificados': { titulo: 'Mis certificados', sub: 'Genera y descarga tus documentos' },
   '/indicadores': { titulo: 'Nuestras cifras', sub: 'Indicadores en tiempo real' },
   '/academia': { titulo: 'Academia Norte y Sur', sub: 'Tu formación, siempre disponible' },
-  '/fondo-fenys': { titulo: 'Fondo Fenys', sub: 'Fondo de empleados Norte y Sur' },
+  '/nuestra-gente': { titulo: 'Nuestra gente', sub: 'Conoce al equipo Norte y Sur' },
   '/sugerencias': { titulo: 'Sugerencias', sub: 'Tu opinión cuenta' },
   '/talento-humano': { titulo: 'Talento Humano', sub: 'Misión, visión y cultura' },
   '/enlaces': { titulo: 'Enlaces Toyota', sub: 'Herramientas y portales de marca' },
   '/panel': { titulo: 'Panel de edición', sub: 'Gestión de contenido' },
+  '/administracion': { titulo: 'Administración', sub: 'Cuentas de colaboradores y editores' },
   '/buscar': { titulo: 'Búsqueda', sub: 'Resultados en la intranet' },
 };
 
 function claseNav({ isActive }: { isActive: boolean }) {
-  return `mb-0.5 flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150 ${
-    isActive ? 'bg-brand text-white' : 'text-faint hover:bg-ink-2 hover:text-white'
-  }`;
+  return `mb-0.5 flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150 ${isActive ? 'bg-brand text-white' : 'text-faint hover:bg-ink-2 hover:text-white'
+    }`;
 }
 
 export function AppLayout() {
@@ -66,6 +67,11 @@ export function AppLayout() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [busqueda, setBusqueda] = useState('');
+  const [cambiandoClave, setCambiandoClave] = useState(false);
+  // El aviso invita a cambiar la clave inicial, nunca obliga: se puede apartar
+  // y no vuelve a aparecer en lo que queda de sesión.
+  const [avisoApartado, setAvisoApartado] = useState(false);
+  const mostrarAvisoClave = Boolean(usuario?.usa_clave_inicial) && !avisoApartado;
 
   const encabezado = TITULOS[pathname] ?? { titulo: 'Intranet', sub: '' };
   const iniciales = (usuario?.nombre ?? '')
@@ -131,6 +137,12 @@ export function AppLayout() {
                 <Icono nombre="lapiz" />
                 Panel de edición
               </NavLink>
+              {usuario.rol === 'admin' && (
+                <NavLink to="/administracion" className={claseNav}>
+                  <Icono nombre="personas" />
+                  Administración
+                </NavLink>
+              )}
             </div>
           )}
         </nav>
@@ -143,7 +155,7 @@ export function AppLayout() {
             <p className="truncate text-xs text-muted">{encabezado.sub}</p>
           </div>
 
-          <form onSubmit={buscar} className="ml-auto hidden max-w-xs flex-1 md:block">
+          <form onSubmit={buscar} className="ml-auto w-32 max-w-xs flex-1 sm:w-auto">
             <label htmlFor="buscador" className="sr-only">Buscar en la intranet</label>
             <input
               id="buscador"
@@ -165,6 +177,15 @@ export function AppLayout() {
             </div>
             <button
               type="button"
+              onClick={() => setCambiandoClave(true)}
+              aria-label="Cambiar mi contraseña"
+              title="Cambiar mi contraseña"
+              className="rounded-lg border border-line px-2.5 py-1.5 text-sm text-body transition-colors duration-150 hover:border-brand hover:text-brand focus-visible:outline-2 focus-visible:outline-brand"
+            >
+              <Icono nombre="candado" />
+            </button>
+            <button
+              type="button"
               onClick={salir}
               aria-label="Cerrar sesión"
               title="Cerrar sesión"
@@ -175,9 +196,33 @@ export function AppLayout() {
           </div>
         </header>
 
+        {mostrarAvisoClave && (
+          <div className="mx-7 mt-5 flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3">
+            <Icono nombre="candado" />
+            <p className="min-w-0 flex-1 text-sm text-body">
+              Entras con tu cédula como contraseña. Puedes cambiarla o seguir usándola.
+            </p>
+            <button
+              type="button"
+              onClick={() => setCambiandoClave(true)}
+              className="rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white transition-opacity duration-150 hover:opacity-90"
+            >
+              Cambiarla
+            </button>
+            <button
+              type="button"
+              onClick={() => setAvisoApartado(true)}
+              className="rounded-lg px-3 py-1.5 text-sm font-semibold text-muted transition-colors duration-150 hover:text-ink"
+            >
+              Seguir así
+            </button>
+          </div>
+        )}
+
         <main className="min-w-0 flex-1 p-7">
           <Outlet />
         </main>
+        {cambiandoClave && <CambiarContrasena onCerrar={() => setCambiandoClave(false)} />}
         <Asistente />
         <ToastEnlaces />
       </div>

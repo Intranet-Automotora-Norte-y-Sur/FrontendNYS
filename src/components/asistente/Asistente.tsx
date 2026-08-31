@@ -16,6 +16,9 @@ export function Asistente() {
   const [mensajes, setMensajes] = useState<Mensaje[]>([SALUDO]);
   const [pregunta, setPregunta] = useState('');
   const [pensando, setPensando] = useState(false);
+  // El hilo lo administra el servidor; aquí solo se guarda su id para
+  // devolverlo en la siguiente pregunta y que el asistente recuerde.
+  const [conversacion, setConversacion] = useState<number | null>(null);
   const finLista = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -28,6 +31,12 @@ export function Asistente() {
     return () => window.removeEventListener('abrir-asistente', abrir);
   }, []);
 
+  /** Corta el hilo: la próxima pregunta abre uno nuevo, sin memoria. */
+  const nuevaConversacion = () => {
+    setConversacion(null);
+    setMensajes([SALUDO]);
+  };
+
   const enviar = async (e: FormEvent) => {
     e.preventDefault();
     const texto = pregunta.trim();
@@ -35,11 +44,15 @@ export function Asistente() {
     setMensajes((lista) => [...lista, { de: 'usuario', texto }]);
     setPregunta('');
     setPensando(true);
-    const resp = await api.post('/api/asistente/preguntar/', { pregunta: texto });
+    const resp = await api.post('/api/asistente/preguntar/', {
+      pregunta: texto,
+      ...(conversacion !== null && { conversacion }),
+    });
     setPensando(false);
     if (resp.ok) {
-      const { respuesta } = (await resp.json()) as { respuesta: string };
-      setMensajes((lista) => [...lista, { de: 'asistente', texto: respuesta }]);
+      const datos = (await resp.json()) as { respuesta: string; conversacion: number };
+      setConversacion(datos.conversacion);
+      setMensajes((lista) => [...lista, { de: 'asistente', texto: datos.respuesta }]);
       return;
     }
     const texto429 = 'Alcanzaste el límite de preguntas por hoy. Vuelve mañana 🙂';
@@ -67,9 +80,23 @@ export function Asistente() {
           aria-label="Asistente virtual"
           className="fixed bottom-24 right-5 z-40 flex h-[28rem] w-80 flex-col overflow-hidden rounded-2xl border border-line bg-white shadow-2xl sm:w-96"
         >
-          <header className="border-b border-line bg-ink px-4 py-3">
-            <p className="font-display font-bold text-white">Asistente Norte y Sur</p>
-            <p className="text-xs text-faint">Responde sobre la intranet y la empresa</p>
+          <header className="flex items-center gap-3 border-b border-line bg-ink px-4 py-3">
+            <div className="min-w-0 flex-1">
+              <p className="font-display font-bold text-white">Asistente Norte y Sur</p>
+              <p className="truncate text-xs text-faint">
+                Responde sobre la intranet y la empresa
+              </p>
+            </div>
+            {conversacion !== null && (
+              <button
+                type="button"
+                onClick={nuevaConversacion}
+                title="Empezar de cero: el asistente olvida lo hablado"
+                className="shrink-0 rounded-lg border border-white/20 px-2.5 py-1 text-xs font-semibold text-faint transition-colors duration-150 hover:bg-white/10 hover:text-white"
+              >
+                Nueva
+              </button>
+            )}
           </header>
 
           <div className="flex-1 space-y-3 overflow-y-auto p-4">

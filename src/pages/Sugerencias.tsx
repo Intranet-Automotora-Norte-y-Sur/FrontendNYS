@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { AnalisisSugerencias } from '../components/sugerencias/AnalisisSugerencias';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../lib/api';
 
@@ -32,6 +33,8 @@ function BandejaAdmin() {
       <p className="mt-1 text-sm text-muted">
         Visible solo para administradores. Las anónimas no guardan autor.
       </p>
+
+      <AnalisisSugerencias haySugerencias={(recibidas?.length ?? 0) > 0} />
 
       {recibidas === null ? (
         <div className="mt-4 rounded-2xl border border-line bg-white p-6 text-center text-sm text-muted">

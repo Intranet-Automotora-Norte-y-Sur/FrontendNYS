@@ -19,6 +19,8 @@ export interface Usuario {
   cargo: string;
   area: string;
   rol: Rol;
+  /** Sigue entrando con la cédula como contraseña; cambiarla es opcional. */
+  usa_clave_inicial: boolean;
 }
 
 interface AuthContexto {
@@ -26,6 +28,7 @@ interface AuthContexto {
   cargando: boolean;
   login: (usuario: string, password: string) => Promise<string | null>;
   logout: () => Promise<void>;
+  refrescarPerfil: () => Promise<void>;
 }
 
 const Ctx = createContext<AuthContexto | null>(null);
@@ -66,9 +69,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUsuario(null);
   }, []);
 
+  /** Relee /me tras cambiar la contraseña, para que el aviso desaparezca. */
+  const refrescarPerfil = useCallback(async () => {
+    setUsuario(await cargarPerfil());
+  }, []);
+
   const valor = useMemo(
-    () => ({ usuario, cargando, login, logout }),
-    [usuario, cargando, login, logout],
+    () => ({ usuario, cargando, login, logout, refrescarPerfil }),
+    [usuario, cargando, login, logout, refrescarPerfil],
   );
   return <Ctx.Provider value={valor}>{children}</Ctx.Provider>;
 }
