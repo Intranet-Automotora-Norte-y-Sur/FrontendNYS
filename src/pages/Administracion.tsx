@@ -16,23 +16,16 @@ interface Cuenta {
   ultimo_acceso: string | null;
 }
 
-interface ResultadoImport {
-  creados: number;
-  actualizados: number;
-  errores: string[];
-}
-
-interface ResultadoFotos {
-  asignadas: number;
-  sin_coincidencia: string[];
-  ignoradas: string[];
-}
-
 const TITULOS: Record<Rol, string> = {
   colaborador: 'Colaboradores',
   editor: 'Editores',
   admin: 'Administradores',
 };
+
+/** Sin tildes y en minúscula: nadie escribe «Muñoz» con tilde al buscar de afán. */
+function normalizar(texto: string): string {
+  return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
 
 function formatearAcceso(iso: string | null): string {
   if (!iso) return 'Nunca ha ingresado';
@@ -46,6 +39,7 @@ export default function Administracion() {
   const [clave, setClave] = useState('');
   const [confirmacion, setConfirmacion] = useState('');
   const [mensaje, setMensaje] = useState<{ texto: string; error: boolean } | null>(null);
+  const [busqueda, setBusqueda] = useState('');
 
   const cargar = useCallback(async () => {
     const resp = await api.get('/api/auth/admin/usuarios/');
@@ -53,44 +47,9 @@ export default function Administracion() {
     setCargando(false);
   }, []);
 
-  const [resultado, setResultado] = useState<ResultadoImport | null>(null);
-  const [importando, setImportando] = useState(false);
-  const [resultadoFotos, setResultadoFotos] = useState<ResultadoFotos | null>(null);
-  const [subiendoZip, setSubiendoZip] = useState(false);
-
   useEffect(() => {
     void cargar();
   }, [cargar]);
-
-  const importarCsv = async (archivo: File) => {
-    setImportando(true);
-    setResultado(null);
-    const fd = new FormData();
-    fd.append('archivo', archivo);
-    const resp = await api.postForm('/api/auth/admin/empleados/importar/', fd);
-    setImportando(false);
-    if (!resp.ok) {
-      const datos = (await resp.json().catch(() => null)) as { detail?: string } | null;
-      setMensaje({ texto: datos?.detail ?? 'No se pudo importar el archivo.', error: true });
-      return;
-    }
-    setResultado((await resp.json()) as ResultadoImport);
-  };
-
-  const importarFotosZip = async (archivo: File) => {
-    setSubiendoZip(true);
-    setResultadoFotos(null);
-    const fd = new FormData();
-    fd.append('archivo', archivo);
-    const resp = await api.postForm('/api/auth/admin/empleados/fotos/', fd);
-    setSubiendoZip(false);
-    if (!resp.ok) {
-      const datos = (await resp.json().catch(() => null)) as { detail?: string } | null;
-      setMensaje({ texto: datos?.detail ?? 'No se pudieron cargar las fotos.', error: true });
-      return;
-    }
-    setResultadoFotos((await resp.json()) as ResultadoFotos);
-  };
 
   const cambiarRol = async (cuenta: Cuenta, rol: Rol) => {
     const resp = await api.post(`/api/auth/admin/usuarios/${cuenta.id}/rol/`, { rol });
@@ -154,6 +113,15 @@ export default function Administracion() {
 
   const grupos: Rol[] = ['colaborador', 'editor', 'admin'];
 
+  // Con 200+ cuentas la lista no se recorre a ojo: se busca por lo que uno
+  // recuerda — nombre, cédula, cargo, área o usuario.
+  const termino = normalizar(busqueda.trim());
+  const coincide = (c: Cuenta) =>
+    !termino ||
+    normalizar(`${c.nombre} ${c.id_identificacion} ${c.cargo} ${c.area} ${c.usuario} ${c.email}`)
+      .includes(termino);
+  const visibles = cuentas.filter(coincide);
+
   return (
     <section aria-labelledby="admin-titulo">
       <h1 id="admin-titulo" className="sr-only">Administración de cuentas</h1>
@@ -162,89 +130,38 @@ export default function Administracion() {
         editores, y designar quién es editor o administrador — todos entran como
         colaboradores. Las cuentas que ya son de administrador se gestionan desde el admin
         de Django. Para agregar un colaborador, cambiar su foto, darlo de baja o eliminarlo,
-        entra a «Nuestra gente»; aquí solo quedan las cargas masivas.
+        entra a «Nuestra gente».
       </p>
 
-      {/* Carga masiva de colaboradores por CSV */}
-      <div className="mt-6 rounded-2xl border border-line bg-white p-5">
-        <h2 className="font-display text-lg font-bold text-ink">Cargar colaboradores (CSV)</h2>
-        <p className="mt-1 max-w-2xl text-sm text-muted">
-          Sube la lista de colaboradores. Se actualizan por cédula (no se duplican).
-          Columnas: <span className="font-mono text-xs">id_identificacion, nombre, cargo, area,
-          fecha_nacimiento, fecha_ingreso, tipo_contrato</span> y, opcionales,{' '}
-          <span className="font-mono text-xs">salario, sede</span>. Las fechas en formato AAAA-MM-DD.
-        </p>
-        <label className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:opacity-90">
-          {importando ? 'Importando…' : 'Seleccionar archivo CSV'}
-          <input
-            type="file"
-            accept=".csv,text/csv"
-            className="hidden"
-            disabled={importando}
-            onChange={(e) => {
-              const archivo = e.target.files?.[0];
-              if (archivo) void importarCsv(archivo);
-              e.target.value = '';
-            }}
-          />
+      <div className="mt-5 max-w-md">
+        <label htmlFor="buscar-colaborador" className="mb-1 block text-xs font-medium text-body">
+          Buscar colaborador
         </label>
-
-        {resultado && (
-          <div className="mt-4 rounded-xl bg-surface p-4 text-sm">
-            <p className="font-medium text-ink">
-              Creados: {resultado.creados} · Actualizados: {resultado.actualizados} · Errores:{' '}
-              {resultado.errores.length}
-            </p>
-            {resultado.errores.length > 0 && (
-              <ul className="mt-2 list-disc space-y-0.5 pl-5 text-brand">
-                {resultado.errores.slice(0, 10).map((err) => (
-                  <li key={err}>{err}</li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Carga masiva de fotos por ZIP */}
-      <div className="mt-6 rounded-2xl border border-line bg-white p-5">
-        <h2 className="font-display text-lg font-bold text-ink">Cargar fotos en lote (ZIP)</h2>
-        <p className="mt-1 max-w-2xl text-sm text-muted">
-          Sube un <span className="font-mono text-xs">.zip</span> con las fotos nombradas por
-          cédula (<span className="font-mono text-xs">123456.jpg</span>). Cada imagen se asigna
-          sola al colaborador con esa cédula. Formatos: JPG, PNG o WEBP (máx. 8 MB c/u).
-        </p>
-        <label className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:opacity-90">
-          {subiendoZip ? 'Cargando fotos…' : 'Seleccionar archivo ZIP'}
+        <div className="flex items-center gap-2">
           <input
-            type="file"
-            accept=".zip,application/zip"
-            className="hidden"
-            disabled={subiendoZip}
-            onChange={(e) => {
-              const archivo = e.target.files?.[0];
-              if (archivo) void importarFotosZip(archivo);
-              e.target.value = '';
-            }}
+            id="buscar-colaborador"
+            type="search"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Nombre, cédula, cargo, área o usuario…"
+            className="w-full rounded-lg border border-line bg-white px-3 py-2 text-sm outline-none transition-colors duration-150 focus:border-brand"
           />
-        </label>
-
-        {resultadoFotos && (
-          <div className="mt-4 rounded-xl bg-surface p-4 text-sm">
-            <p className="font-medium text-ink">
-              Asignadas: {resultadoFotos.asignadas} · Sin coincidencia:{' '}
-              {resultadoFotos.sin_coincidencia.length} · Ignoradas:{' '}
-              {resultadoFotos.ignoradas.length}
-            </p>
-            {resultadoFotos.sin_coincidencia.length > 0 && (
-              <p className="mt-2 text-muted">
-                Cédulas sin colaborador:{' '}
-                <span className="font-mono text-xs">
-                  {resultadoFotos.sin_coincidencia.slice(0, 15).join(', ')}
-                </span>
-              </p>
-            )}
-          </div>
+          {busqueda && (
+            <button
+              type="button"
+              onClick={() => setBusqueda('')}
+              className="shrink-0 text-sm font-medium text-muted hover:text-ink"
+            >
+              Limpiar
+            </button>
+          )}
+        </div>
+        {termino && (
+          <p className="mt-1.5 text-xs text-muted" role="status">
+            {visibles.length === 0
+              ? 'Ninguna cuenta coincide con la búsqueda.'
+              : `${visibles.length} de ${cuentas.length} cuentas coinciden.`}
+          </p>
         )}
       </div>
 
@@ -262,7 +179,7 @@ export default function Administracion() {
       {cargando && <p className="mt-6 text-sm text-muted">Cargando cuentas…</p>}
 
       {grupos.map((rol) => {
-        const filas = cuentas.filter((c) => c.rol === rol);
+        const filas = visibles.filter((c) => c.rol === rol);
         if (!cargando && filas.length === 0) return null;
         return (
           <div key={rol} className="mt-8">

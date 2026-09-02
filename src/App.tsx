@@ -18,6 +18,8 @@ import { SeccionContenido } from './pages/SeccionContenido';
 // El panel carga TipTap — solo lo descargan editores/admins que lo abren
 const Panel = lazy(() => import('./pages/Panel'));
 const Administracion = lazy(() => import('./pages/Administracion'));
+// El informe del buzón arrastra los gráficos de análisis: solo lo baja quien lo abre
+const Buzon = lazy(() => import('./pages/Buzon'));
 // Verificación pública de certificados — sin sesión (la abren bancos/terceros)
 const Verificar = lazy(() => import('./pages/Verificar'));
 
@@ -79,6 +81,16 @@ export default function App() {
                 <RutaProtegida rolMinimo="admin">
                   <Suspense fallback={<p className="text-sm text-muted">Cargando administración…</p>}>
                     <Administracion />
+                  </Suspense>
+                </RutaProtegida>
+              }
+            />
+            <Route
+              path="/buzon"
+              element={
+                <RutaProtegida rolMinimo="admin">
+                  <Suspense fallback={<p className="text-sm text-muted">Cargando informe…</p>}>
+                    <Buzon />
                   </Suspense>
                 </RutaProtegida>
               }

@@ -54,6 +54,7 @@ const TITULOS: Record<string, { titulo: string; sub: string }> = {
   '/enlaces': { titulo: 'Enlaces Toyota', sub: 'Herramientas y portales de marca' },
   '/panel': { titulo: 'Panel de edición', sub: 'Gestión de contenido' },
   '/administracion': { titulo: 'Administración', sub: 'Cuentas de colaboradores y editores' },
+  '/buzon': { titulo: 'Buzón Digital de Ideas', sub: 'Informe y gestión de los casos' },
   '/buscar': { titulo: 'Búsqueda', sub: 'Resultados en la intranet' },
 };
 
@@ -138,10 +139,16 @@ export function AppLayout() {
                 Panel de edición
               </NavLink>
               {usuario.rol === 'admin' && (
-                <NavLink to="/administracion" className={claseNav}>
-                  <Icono nombre="personas" />
-                  Administración
-                </NavLink>
+                <>
+                  <NavLink to="/administracion" className={claseNav}>
+                    <Icono nombre="personas" />
+                    Administración
+                  </NavLink>
+                  <NavLink to="/buzon" className={claseNav}>
+                    <Icono nombre="documento" />
+                    Informe del buzón
+                  </NavLink>
+                </>
               )}
             </div>
           )}

@@ -17,6 +17,8 @@ interface Persona {
   sede_label: string;
   marca: string;
   edad: number;
+  /** Ya legible («Casado(a)»); vacío cuando la nómina no lo tiene. */
+  estado_civil: string;
   iniciales: string;
   foto: string | null;
   activo: boolean;
@@ -342,6 +344,13 @@ export function NuestraGente() {
                     <Icono nombre="pastel" className="h-4 w-4 shrink-0 text-faint" />
                     {p.edad} años
                   </p>
+                  {/* La nómina no siempre lo trae: sin dato, no se pinta la línea. */}
+                  {p.estado_civil && (
+                    <p className="flex items-center gap-2">
+                      <Icono nombre="nombre" className="h-4 w-4 shrink-0 text-faint" />
+                      {p.estado_civil}
+                    </p>
+                  )}
                 </div>
 
                 {esAdmin && (

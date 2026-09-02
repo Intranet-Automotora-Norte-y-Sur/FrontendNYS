@@ -10,6 +10,19 @@ interface Resultado {
 
 type Estado = 'cargando' | 'valido' | 'invalido' | 'error';
 
+/** WhatsApp de Gestión Humana. Solo dígitos con indicativo: lo exige wa.me. */
+const WHATSAPP_GESTION_HUMANA = '573053560623';
+/** El mismo número, como lo lee una persona. */
+const TELEFONO_GESTION_HUMANA = '+57 305 3560623';
+
+/** Enlace a WhatsApp con el código ya escrito: nadie transcribe un UUID a mano. */
+function enlaceWhatsapp(codigo: string | undefined): string {
+  const mensaje = codigo
+    ? `Hola, escribo por el certificado con código de verificación ${codigo}.`
+    : 'Hola, escribo por un certificado laboral.';
+  return `https://wa.me/${WHATSAPP_GESTION_HUMANA}?text=${encodeURIComponent(mensaje)}`;
+}
+
 // Página PÚBLICA (sin sesión): la usan bancos/terceros para validar certificados.
 export default function Verificar() {
   const { codigo } = useParams<{ codigo: string }>();
@@ -94,6 +107,23 @@ export default function Verificar() {
           <p className="mt-8 text-sm text-muted">
             No se pudo consultar el sistema. Intente de nuevo en unos minutos.
           </p>
+        )}
+
+        {/* Fuera de los estados a propósito: hace falta tanto si el documento es
+            auténtico (dudas) como si no lo es (denunciarlo) o si el sistema falla. */}
+        {estado !== 'cargando' && (
+          <div className="mt-8 border-t border-line pt-6">
+            <p className="text-xs text-muted">¿Tiene dudas sobre este documento?</p>
+            <a
+              href={enlaceWhatsapp(codigo)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex items-center justify-center gap-2 rounded-full bg-ok px-5 py-2.5 text-sm font-semibold text-white transition-colors duration-150 hover:bg-ok/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ok"
+            >
+              Escribir a Gestión Humana
+            </a>
+            <p className="mt-2 text-xs text-muted">{TELEFONO_GESTION_HUMANA}</p>
+          </div>
         )}
       </section>
     </main>
