@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import logo from '../assets/logo.png';
 import { ComunicadoCard } from '../components/comunicados/ComunicadoCard';
 import { CumpleanosMes } from '../components/cumpleanos/CumpleanosMes';
 import { GaleriaVida } from '../components/galeria/GaleriaVida';
@@ -27,15 +28,25 @@ export function Inicio() {
             aria-hidden="true"
             className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-brand/25 blur-3xl"
           />
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-soft">
+          {/* Sello de marca sobre el resplandor rojo. Decorativo: el título ya
+              dice «Norte y Sur», así que repetirlo sería ruido para un lector
+              de pantalla. Se oculta en pantallas angostas para no chocar con
+              el texto. */}
+          <img
+            src={logo}
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none absolute right-10 top-9 hidden h-20 w-auto opacity-25 invert sm:block"
+          />
+          <p className="relative text-xs font-bold uppercase tracking-[0.2em] text-brand-soft">
             Hola, {nombre} 👋
           </p>
-          <h2 id="bienvenida" className="mt-2 font-display text-4xl font-extrabold leading-[1.05] tracking-tight">
+          <h2 id="bienvenida" className="relative mt-2 font-display text-4xl font-extrabold leading-[1.05] tracking-tight">
             Bienvenido a la
             <br />
             Intranet Norte y Sur
           </h2>
-          <p className="mt-3 max-w-md text-sm text-faint">
+          <p className="relative mt-3 max-w-md text-sm text-faint">
             Aquí encuentras tus certificados, los indicadores de la operación y los
             comunicados más recientes de la compañía.
           </p>

@@ -14,8 +14,9 @@ import rav4 from '../assets/carros/rav4.webp';
 import sandero from '../assets/carros/sandero.webp';
 import yarisCross from '../assets/carros/yaris-cross.webp';
 import logo from '../assets/logo.png';
+import { PasoCodigo } from '../components/auth/PasoCodigo';
 import { Icono } from '../components/ui/Icono';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth, type RetoCodigo } from '../hooks/useAuth';
 
 interface Vehiculo {
   img: string;
@@ -48,11 +49,16 @@ const STATS = [
   { valor: '100%', etiqueta: 'Autohospedado y seguro' },
 ];
 
-const DEMOS: { rol: string; usuario: string; password: string }[] = [
-  { rol: 'Colaborador', usuario: 'mlopez', password: 'NorteSur*2026' },
-  { rol: 'Editor', usuario: 'cperez', password: 'NorteSur*2026' },
-  { rol: 'Admin', usuario: 'carlos', password: '' },
-];
+// Demo shortcuts exist ONLY in the dev build: `import.meta.env.DEV` is false
+// in `npm run build`, so Vite drops this whole block — the credentials never
+// travel inside the production bundle, where anyone could read them.
+const DEMOS: { rol: string; usuario: string; password: string }[] = import.meta.env.DEV
+  ? [
+      { rol: 'Colaborador', usuario: 'mlopez', password: 'NorteSur*2026' },
+      { rol: 'Editor', usuario: 'cperez', password: 'NorteSur*2026' },
+      { rol: 'Admin', usuario: 'carlos', password: '' },
+    ]
+  : [];
 
 export function Login() {
   const { login } = useAuth();
@@ -62,6 +68,8 @@ export function Login() {
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [indice, setIndice] = useState(0);
+  /** Con valor, las credenciales ya pasaron y falta el código del correo. */
+  const [reto, setReto] = useState<RetoCodigo | null>(null);
 
   const siguiente = useCallback(
     () => setIndice((i) => (i + 1) % VEHICULOS.length),
@@ -77,13 +85,25 @@ export function Login() {
     e.preventDefault();
     setEnviando(true);
     setError(null);
-    const mensaje = await login(usuario, password);
+    const resultado = await login(usuario, password);
     setEnviando(false);
-    if (mensaje) {
-      setError(mensaje);
+    if (resultado.estado === 'error') {
+      setError(resultado.mensaje);
+      return;
+    }
+    if (resultado.estado === 'codigo') {
+      // La contraseña no se queda en memoria mientras se teclea el código.
+      setPassword('');
+      setReto(resultado.reto);
       return;
     }
     navigate('/');
+  };
+
+  const volverACredenciales = () => {
+    setReto(null);
+    setPassword('');
+    setError(null);
   };
 
   const usarDemo = (u: string, p: string) => {
@@ -233,6 +253,13 @@ export function Login() {
 
         {/* Columna derecha — tarjeta de acceso */}
         <section className="mx-auto w-full max-w-2xl lg:ml-auto lg:mr-0">
+          {reto ? (
+            <PasoCodigo
+              reto={reto}
+              onVerificado={() => navigate('/')}
+              onCancelar={volverACredenciales}
+            />
+          ) : (
           <form
             onSubmit={onSubmit}
             className="relative rounded-3xl border border-white/10 bg-[#0d131f]/90 p-11 shadow-2xl shadow-black/40 backdrop-blur"
@@ -335,29 +362,34 @@ export function Login() {
               {enviando ? 'Ingresando…' : 'Ingresar al portal'}
             </button>
 
-            <div className="my-5 flex items-center gap-3 text-[0.65rem] font-bold uppercase tracking-[0.2em] text-white/30">
-              <span className="h-px flex-1 bg-white/10" />
-              Acceso rápido · Demo
-              <span className="h-px flex-1 bg-white/10" />
-            </div>
-            <div className="grid grid-cols-3 gap-2.5">
-              {DEMOS.map((d) => (
-                <button
-                  key={d.rol}
-                  type="button"
-                  onClick={() => usarDemo(d.usuario, d.password)}
-                  className="rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-medium text-white/80 transition-colors duration-150 hover:border-brand hover:text-white"
-                >
-                  {d.rol}
-                </button>
-              ))}
-            </div>
+            {DEMOS.length > 0 && (
+              <>
+                <div className="my-5 flex items-center gap-3 text-[0.65rem] font-bold uppercase tracking-[0.2em] text-white/30">
+                  <span className="h-px flex-1 bg-white/10" />
+                  Acceso rápido · Demo
+                  <span className="h-px flex-1 bg-white/10" />
+                </div>
+                <div className="grid grid-cols-3 gap-2.5">
+                  {DEMOS.map((d) => (
+                    <button
+                      key={d.rol}
+                      type="button"
+                      onClick={() => usarDemo(d.usuario, d.password)}
+                      className="rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-medium text-white/80 transition-colors duration-150 hover:border-brand hover:text-white"
+                    >
+                      {d.rol}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
 
             <p className="mt-5 flex items-center justify-center gap-1.5 text-xs text-white/40">
               <Icono nombre="candado" className="h-3.5 w-3.5" />
               Validación segura contra la lista maestra · Ley 1581 de 2012
             </p>
           </form>
+          )}
         </section>
       </div>
     </main>

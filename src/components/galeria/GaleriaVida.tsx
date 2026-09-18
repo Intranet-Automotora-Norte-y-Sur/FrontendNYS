@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { listarPublicados, type Contenido } from '../../lib/contenido';
+import { listarPublicados, rutaMedia, type Contenido } from '../../lib/contenido';
 
 const COLORES_DEMO = [
   { titulo: 'Integración 2026', color: 'linear-gradient(135deg,#1d4ed8,#3b82f6)' },
@@ -48,7 +48,9 @@ export function GaleriaVida() {
     void listarPublicados('galeria').then((items: Contenido[]) => {
       const conFoto = items.filter((item) => item.imagen_portada);
       if (conFoto.length > 0) {
-        setMomentos(conFoto.map((item) => ({ titulo: item.titulo, imagen: item.imagen_portada! })));
+        setMomentos(
+          conFoto.map((item) => ({ titulo: item.titulo, imagen: rutaMedia(item.imagen_portada!) })),
+        );
       }
     });
   }, []);

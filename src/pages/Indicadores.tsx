@@ -10,14 +10,16 @@ import {
   GraficoLinea,
   GraficoMedidor,
 } from '../components/cifras/Graficos';
+import { FinancePanel } from '../components/cifras/FinancePanel';
 
-/** Orden y nombre visible de las categorías de indicadores. */
+/** Orden y nombre visible de las categorías de indicadores.
+ *
+ *  Comercial, Posventa y taller, Cliente y Seguridad y salud quedaron fuera: sus
+ *  indicadores son plantillas que nadie llegó a llenar y se mostraban en cero.
+ *  Los registros siguen en la base y en el admin de Django — para volver a
+ *  publicar una sección basta con devolver su línea a esta lista. */
 const CATEGORIAS: { valor: string; nombre: string }[] = [
-  { valor: 'comercial', nombre: 'Comercial' },
-  { valor: 'posventa', nombre: 'Posventa y taller' },
-  { valor: 'cliente', nombre: 'Cliente' },
   { valor: 'gente', nombre: 'Nuestra gente' },
-  { valor: 'sst', nombre: 'Seguridad y salud' },
 ];
 
 type Categoria = { etiqueta: string; valor: number };
@@ -247,6 +249,9 @@ export function Indicadores() {
           Aún no hay indicadores configurados.
         </p>
       )}
+
+      {/* Accounting figures are requested — and rendered — only for admins. */}
+      <FinancePanel isAdmin={esAdmin} />
 
       {grupos.map((grupo) => (
         <div key={grupo.valor} className="mt-8">

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CATEGORIAS } from '../components/comunicados/ComunicadoCard';
+import { InsigniaImportancia } from '../components/ui/InsigniaImportancia';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../lib/api';
 import {
@@ -19,7 +20,7 @@ function RecursosTarjeta({ item }: { item: Contenido }) {
     <>
       {item.video && (
         <video controls preload="metadata" className="w-full bg-black">
-          <source src={item.video} />
+          <source src={rutaMedia(item.video)} />
           Tu navegador no puede reproducir este video.
         </video>
       )}
@@ -270,7 +271,7 @@ function AccionesTarjeta({ item }: { item: Contenido }) {
       )}
       {item.archivo && (
         <a
-          href={item.archivo}
+          href={rutaMedia(item.archivo)}
           download
           className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2 text-sm font-bold text-white transition-transform duration-150 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-brand"
         >
@@ -395,6 +396,11 @@ export function SeccionContenido({ seccion, titulo, descripcion }: Props) {
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-ink/85 via-ink/30 to-transparent" />
                   <div className="relative flex min-h-52 flex-col justify-end gap-3 p-5">
+                    {item.importancia && (
+                      <p className="w-fit">
+                        <InsigniaImportancia nivel={item.importancia} sobreImagen />
+                      </p>
+                    )}
                     <h2 className="font-display text-lg font-bold uppercase tracking-wide text-white drop-shadow">
                       {item.titulo}
                     </h2>
@@ -468,6 +474,11 @@ export function SeccionContenido({ seccion, titulo, descripcion }: Props) {
                         <p className="mt-0.5 text-xs text-muted">
                           Actualizado el {new Date(item.actualizado_en).toLocaleDateString('es-CO')}
                         </p>
+                        {item.importancia && (
+                          <p className="mt-2">
+                            <InsigniaImportancia nivel={item.importancia} />
+                          </p>
+                        )}
                         <div
                           className="prosa mt-3"
                           dangerouslySetInnerHTML={{ __html: htmlSeguro(item.cuerpo) }}

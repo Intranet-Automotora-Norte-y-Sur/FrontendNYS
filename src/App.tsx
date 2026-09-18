@@ -4,7 +4,7 @@ import { AppLayout } from './components/layout/AppLayout';
 import { RutaProtegida } from './components/RutaProtegida';
 import { AuthProvider } from './hooks/useAuth';
 import { Academia } from './pages/Academia';
-import { Buscar } from './pages/Buscar';
+import { Asistente } from './pages/Asistente';
 import { EnlacesToyota } from './pages/EnlacesToyota';
 import { GaleriaEnlace } from './pages/GaleriaEnlace';
 import { Certificados } from './pages/Certificados';
@@ -18,8 +18,11 @@ import { SeccionContenido } from './pages/SeccionContenido';
 // El panel carga TipTap — solo lo descargan editores/admins que lo abren
 const Panel = lazy(() => import('./pages/Panel'));
 const Administracion = lazy(() => import('./pages/Administracion'));
+const Ingresos = lazy(() => import('./pages/Ingresos'));
 // El informe del buzón arrastra los gráficos de análisis: solo lo baja quien lo abre
 const Buzon = lazy(() => import('./pages/Buzon'));
+// Seguimiento de los casos asignados: solo lo abre quien tiene alguno
+const MisCasos = lazy(() => import('./pages/MisCasos'));
 // Verificación pública de certificados — sin sesión (la abren bancos/terceros)
 const Verificar = lazy(() => import('./pages/Verificar'));
 
@@ -45,6 +48,7 @@ export default function App() {
             }
           >
             <Route path="/" element={<Inicio />} />
+            <Route path="/asistente" element={<Asistente />} />
             <Route
               path="/comunicados"
               element={<SeccionContenido seccion="comunicados" titulo="Comunicados" descripcion="Noticias y anuncios de la empresa." />}
@@ -58,13 +62,22 @@ export default function App() {
             <Route path="/academia" element={<Academia />} />
             <Route path="/enlaces" element={<EnlacesToyota />} />
             <Route path="/enlaces/:id" element={<GaleriaEnlace />} />
-            <Route path="/buscar" element={<Buscar />} />
             <Route
               path="/talento-humano"
               element={<SeccionContenido seccion="info_rrhh" titulo="Talento Humano" descripcion="Misión, visión y cultura Norte y Sur." />}
             />
             <Route path="/nuestra-gente" element={<NuestraGente />} />
             <Route path="/sugerencias" element={<Sugerencias />} />
+            {/* Sin rol mínimo: la puerta es la asignación, no el cargo — el
+                servidor solo devuelve los casos de quien pregunta. */}
+            <Route
+              path="/mis-casos"
+              element={
+                <Suspense fallback={<p className="text-sm text-muted">Cargando casos…</p>}>
+                  <MisCasos />
+                </Suspense>
+              }
+            />
             <Route
               path="/panel"
               element={
@@ -81,6 +94,16 @@ export default function App() {
                 <RutaProtegida rolMinimo="admin">
                   <Suspense fallback={<p className="text-sm text-muted">Cargando administración…</p>}>
                     <Administracion />
+                  </Suspense>
+                </RutaProtegida>
+              }
+            />
+            <Route
+              path="/ingresos"
+              element={
+                <RutaProtegida rolMinimo="admin">
+                  <Suspense fallback={<p className="text-sm text-muted">Cargando informe…</p>}>
+                    <Ingresos />
                   </Suspense>
                 </RutaProtegida>
               }

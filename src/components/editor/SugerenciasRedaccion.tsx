@@ -66,15 +66,18 @@ export function SugerenciasRedaccion({ cuerpo, onUsarTitular }: SugerenciasRedac
         <Icono nombre="chispas" />
         <div className="min-w-0 flex-1">
           <h3 className="font-display text-sm font-bold text-ink">Ayuda para redactar</h3>
+          {/* El motivo por el que el botón está apagado va en pantalla, no en
+              un `title`: quien no pasa el mouse por encima cree que está roto. */}
           <p className="text-xs text-muted">
-            Propone titular, resumen y texto de tarjeta. Tú revisas y decides.
+            {suficiente
+              ? 'Propone titular, resumen y texto de tarjeta. Tú revisas y decides.'
+              : `Escribe el cuerpo primero: faltan ${MINIMO_CARACTERES - texto.length} caracteres para poder proponer.`}
           </p>
         </div>
         <button
           type="button"
           onClick={() => void pedir()}
           disabled={pensando || !suficiente}
-          title={suficiente ? undefined : 'Escribe primero el borrador'}
           className="rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white transition-opacity duration-150 hover:opacity-90 disabled:opacity-40"
         >
           {pensando ? 'Pensando…' : 'Proponer'}

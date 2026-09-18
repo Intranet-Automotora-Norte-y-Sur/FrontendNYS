@@ -3,10 +3,6 @@ import { api } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
 import { Icono } from '../components/ui/Icono';
 import { VisorFoto } from '../components/gente/VisorFoto';
-import {
-  FormularioColaborador,
-  type DatosColaborador,
-} from '../components/gente/FormularioColaborador';
 
 interface Persona {
   id: number;
@@ -65,8 +61,6 @@ export function NuestraGente() {
   const [marca, setMarca] = useState<string>('');
   const [sede, setSede] = useState<string>(TODAS_LAS_SEDES);
   const [ampliada, setAmpliada] = useState<Persona | null>(null);
-  const [mostrarAlta, setMostrarAlta] = useState(false);
-  const [creando, setCreando] = useState(false);
   const [subiendoFoto, setSubiendoFoto] = useState<number | null>(null);
   const [mensaje, setMensaje] = useState<{ texto: string; error: boolean } | null>(null);
 
@@ -89,9 +83,6 @@ export function NuestraGente() {
     () => sedesDe((gente ?? []).filter((p) => !marca || p.marca === marca)),
     [gente, marca],
   );
-
-  /** Todas las sedes conocidas: sugerencias del formulario de alta. */
-  const todasLasSedes = useMemo(() => sedesDe(gente ?? []), [gente]);
 
   const visibles = useMemo(() => {
     if (!gente) return [];
@@ -123,45 +114,6 @@ export function NuestraGente() {
     setGente((prev) =>
       prev ? prev.map((p) => (p.id === persona.id ? { ...p, foto } : p)) : prev,
     );
-  };
-
-  const crearColaborador = async (datos: DatosColaborador, foto: File | null) => {
-    setCreando(true);
-    const resp = await api.post('/api/auth/admin/empleados/', datos);
-    if (!resp.ok) {
-      const errores = (await resp.json().catch(() => null)) as Record<string, string[]> | null;
-      const detalle = errores
-        ? Object.entries(errores)
-            .map(([campo, msgs]) => `${campo}: ${msgs.join(' ')}`)
-            .join(' · ')
-        : 'No se pudo crear el colaborador.';
-      setMensaje({ texto: detalle, error: true });
-      setCreando(false);
-      return false;
-    }
-    const creado = (await resp.json()) as { id: number };
-    let aviso = {
-      texto: datos.crear_cuenta
-        ? `${datos.nombre} se agregó al equipo. Su usuario y contraseña son la cédula ${datos.id_identificacion}; pídele que la cambie al ingresar.`
-        : `${datos.nombre} se agregó al equipo (sin cuenta de acceso).`,
-      error: false,
-    };
-    if (foto) {
-      const fd = new FormData();
-      fd.append('foto', foto);
-      const respFoto = await api.postForm(`/api/auth/admin/empleados/${creado.id}/foto/`, fd);
-      if (!respFoto.ok) {
-        aviso = {
-          texto: `${datos.nombre} se creó, pero la foto no se pudo subir. Inténtalo desde su tarjeta.`,
-          error: true,
-        };
-      }
-    }
-    setCreando(false);
-    setMensaje(aviso);
-    if (!aviso.error) setMostrarAlta(false);
-    await cargar();
-    return true;
   };
 
   const cambiarActivo = async (persona: Persona, activo: boolean) => {
@@ -243,32 +195,7 @@ export function NuestraGente() {
         <span className="ml-auto text-sm text-muted">
           {visibles.length} colaborador{visibles.length === 1 ? '' : 'es'}
         </span>
-        {esAdmin && (
-          <button
-            type="button"
-            onClick={() => setMostrarAlta((v) => !v)}
-            className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white transition-opacity duration-150 hover:opacity-90"
-          >
-            {mostrarAlta ? 'Cerrar' : 'Nuevo colaborador'}
-          </button>
-        )}
       </div>
-
-      {esAdmin && mostrarAlta && (
-        <div className="mb-6 rounded-2xl border border-line bg-white p-5">
-          <h2 className="font-display text-lg font-bold text-ink">Agregar colaborador</h2>
-          <p className="mt-1 text-sm text-muted">
-            Queda visible en «Nuestra gente». La foto es opcional: sin ella se muestra un
-            monograma con las iniciales.
-          </p>
-          <FormularioColaborador
-            guardando={creando}
-            sedes={todasLasSedes}
-            onGuardar={crearColaborador}
-            onCancelar={() => setMostrarAlta(false)}
-          />
-        </div>
-      )}
 
       {mensaje && (
         <p
@@ -347,7 +274,7 @@ export function NuestraGente() {
                   {/* La nómina no siempre lo trae: sin dato, no se pinta la línea. */}
                   {p.estado_civil && (
                     <p className="flex items-center gap-2">
-                      <Icono nombre="nombre" className="h-4 w-4 shrink-0 text-faint" />
+                      <Icono nombre="personas" className="h-4 w-4 shrink-0 text-faint" />
                       {p.estado_civil}
                     </p>
                   )}

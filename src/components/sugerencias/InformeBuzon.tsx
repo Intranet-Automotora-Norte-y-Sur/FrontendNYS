@@ -1,85 +1,35 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../../lib/api';
 import { AnalisisSugerencias } from './AnalisisSugerencias';
+import { SelectorResponsable } from './SelectorResponsable';
+import {
+  CAMPO,
+  COLOR_ESTADO,
+  DECISIONES,
+  ESTADOS,
+  TIPOS,
+  cargarAreas,
+  descargarEvidencia,
+  fechaCorta,
+  type Caso,
+  type Opcion,
+} from './casos';
 
-export interface Caso {
-  id: number;
-  fecha: string;
-  sede: string;
-  /** «Acopi»; el campo `sede` guarda el código («acopi»). */
-  sede_label: string;
-  anonimo: boolean;
-  autor: string;
-  correo: string;
-  quiere_respuesta: boolean;
-  tipo: string;
-  tipo_label: string;
-  mensaje: string;
-  estado: string;
-  estado_label: string;
-  area_responsable: string;
-  area_label: string;
-  responsable: string;
-  decision: string;
-  decision_label: string;
-  observaciones: string;
-  fecha_cierre: string | null;
-  evidencia: string | null;
-}
-
-const ESTADOS = [
-  { valor: 'recibida', etiqueta: 'Recibida' },
-  { valor: 'en_revision', etiqueta: 'En revisión' },
-  { valor: 'asignada', etiqueta: 'Asignada al área' },
-  { valor: 'cerrada', etiqueta: 'Cerrada' },
-];
-
-const AREAS = [
-  { valor: 'gestion_humana', etiqueta: 'Gestión Humana' },
-  { valor: 'calidad_kaizen', etiqueta: 'Calidad y Kaizen' },
-];
-
-const DECISIONES = [
-  { valor: 'aprobada', etiqueta: 'Aprobada' },
-  { valor: 'rechazada', etiqueta: 'Rechazada' },
-];
-
-const TIPOS = [
-  { valor: 'queja', etiqueta: 'Queja' },
-  { valor: 'sugerencia', etiqueta: 'Sugerencia' },
-  { valor: 'mejora', etiqueta: 'Oportunidad de mejora' },
-  { valor: 'felicitacion', etiqueta: 'Felicitación' },
-];
-
-/** Color por estado. El estado es lo que más se escanea en una lista larga. */
-const COLOR_ESTADO: Record<string, string> = {
-  recibida: 'bg-warn/15 text-body',
-  en_revision: 'bg-info/15 text-info',
-  asignada: 'bg-ok/15 text-ok',
-  cerrada: 'bg-ink/10 text-muted',
-};
-
-const CAMPO =
-  'w-full rounded-lg border border-line px-3 py-2 text-sm outline-none transition-colors duration-150 focus:border-brand';
-
-function fechaCorta(iso: string): string {
-  return new Date(iso).toLocaleDateString('es-CO', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
-}
+export type { Caso } from './casos';
 
 /** Panel de gestión de un caso. Solo toca los campos del administrador. */
 function Gestion({
   caso,
+  areas,
   onGuardado,
 }: {
   caso: Caso;
+  areas: Opcion[];
   onGuardado: (actualizado: Caso) => void;
 }) {
   const [estado, setEstado] = useState(caso.estado);
   const [area, setArea] = useState(caso.area_responsable);
+  const [responsableId, setResponsableId] = useState<number | null>(caso.responsable_id);
   const [responsable, setResponsable] = useState(caso.responsable);
   const [decision, setDecision] = useState(caso.decision);
   const [observaciones, setObservaciones] = useState(caso.observaciones);
@@ -87,16 +37,19 @@ function Gestion({
   const [evidencia, setEvidencia] = useState<File | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
+  const [aviso, setAviso] = useState('');
 
   const guardar = async () => {
     setGuardando(true);
     setError('');
+    setAviso('');
     // FormData y no JSON: la evidencia es un archivo. Los campos de texto van
     // igual aunque estén vacíos, para poder borrar una decisión puesta por error.
     const fd = new FormData();
     fd.append('estado', estado);
     fd.append('area_responsable', area);
-    fd.append('responsable', responsable);
+    // Cadena vacía y no "null": es como DRF lee un null en multipart.
+    fd.append('responsable_id', responsableId === null ? '' : String(responsableId));
     fd.append('decision', decision);
     fd.append('observaciones', observaciones);
     if (fechaCierre) fd.append('fecha_cierre', fechaCierre);
@@ -108,7 +61,11 @@ function Gestion({
       setError('No se pudo guardar. Revisa los campos.');
       return;
     }
-    onGuardado((await resp.json()) as Caso);
+    const actualizado = (await resp.json()) as Caso;
+    // El caso quedó asignado aunque el correo fallara: si no se dice, el
+    // administrador da por hecho que a la persona ya le avisaron.
+    if (actualizado.aviso) setAviso(actualizado.aviso);
+    onGuardado(actualizado);
   };
 
   return (
@@ -134,7 +91,7 @@ function Gestion({
         </label>
         <select value={area} onChange={(e) => setArea(e.target.value)} className={CAMPO}>
           <option value="">Sin asignar</option>
-          {AREAS.map((o) => (
+          {areas.map((o) => (
             <option key={o.valor} value={o.valor}>
               {o.etiqueta}
             </option>
@@ -142,15 +99,17 @@ function Gestion({
         </select>
       </div>
 
-      <div>
+      <div className="sm:col-span-2">
         <label className="mb-1 block text-xs font-semibold text-muted">
           Responsable del caso
         </label>
-        <input
-          value={responsable}
-          onChange={(e) => setResponsable(e.target.value)}
-          className={CAMPO}
-          placeholder="Nombre de quien atiende"
+        <SelectorResponsable
+          valor={responsableId}
+          nombreActual={responsable}
+          onCambio={(id, nombre) => {
+            setResponsableId(id);
+            setResponsable(nombre);
+          }}
         />
       </div>
 
@@ -172,6 +131,18 @@ function Gestion({
         </select>
       </div>
 
+      <div>
+        <label className="mb-1 block text-xs font-semibold text-muted">
+          Fecha de cierre
+        </label>
+        <input
+          type="date"
+          value={fechaCierre}
+          onChange={(e) => setFechaCierre(e.target.value)}
+          className={CAMPO}
+        />
+      </div>
+
       <div className="sm:col-span-2">
         <label className="mb-1 block text-xs font-semibold text-muted">
           Observaciones del área
@@ -185,18 +156,6 @@ function Gestion({
       </div>
 
       <div>
-        <label className="mb-1 block text-xs font-semibold text-muted">
-          Fecha de cierre
-        </label>
-        <input
-          type="date"
-          value={fechaCierre}
-          onChange={(e) => setFechaCierre(e.target.value)}
-          className={CAMPO}
-        />
-      </div>
-
-      <div>
         <label className="mb-1 block text-xs font-semibold text-muted">Evidencia</label>
         <input
           type="file"
@@ -204,14 +163,13 @@ function Gestion({
           className="block w-full text-xs text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-ink/5 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-body"
         />
         {caso.evidencia && (
-          <a
-            href={caso.evidencia}
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            type="button"
+            onClick={() => void descargarEvidencia(caso)}
             className="mt-1 inline-block text-xs font-semibold text-info hover:underline"
           >
-            Ver evidencia cargada
-          </a>
+            Descargar evidencia cargada
+          </button>
         )}
       </div>
 
@@ -229,6 +187,11 @@ function Gestion({
             {error}
           </span>
         )}
+        {aviso && (
+          <span role="alert" className="text-xs text-warn">
+            {aviso}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -236,6 +199,7 @@ function Gestion({
 
 export function InformeBuzon() {
   const [casos, setCasos] = useState<Caso[] | null>(null);
+  const [areas, setAreas] = useState<Opcion[]>([]);
   const [abierto, setAbierto] = useState<number | null>(null);
   const [filtroEstado, setFiltroEstado] = useState('');
   const [filtroTipo, setFiltroTipo] = useState('');
@@ -247,6 +211,7 @@ export function InformeBuzon() {
 
   useEffect(() => {
     void cargar();
+    void cargarAreas().then(setAreas);
   }, [cargar]);
 
   // Los filtros se aplican en memoria: son pocos casos y así no hay ida y
@@ -357,6 +322,12 @@ export function InformeBuzon() {
                     <dd className="font-medium text-body">{c.area_label}</dd>
                   </div>
                 )}
+                {c.responsable && (
+                  <div className="flex gap-1">
+                    <dt>Responsable:</dt>
+                    <dd className="font-medium text-body">{c.responsable}</dd>
+                  </div>
+                )}
                 {c.decision_label && (
                   <div className="flex gap-1">
                     <dt>Decisión:</dt>
@@ -374,7 +345,9 @@ export function InformeBuzon() {
                 {abierto === c.id ? 'Cerrar gestión' : 'Gestionar caso'}
               </button>
 
-              {abierto === c.id && <Gestion caso={c} onGuardado={reemplazar} />}
+              {abierto === c.id && (
+                <Gestion caso={c} areas={areas} onGuardado={reemplazar} />
+              )}
             </li>
           ))}
         </ul>

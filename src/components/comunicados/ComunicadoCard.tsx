@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { htmlSeguro, type Contenido } from '../../lib/contenido';
+import { InsigniaImportancia } from '../ui/InsigniaImportancia';
 
 export const CATEGORIAS: Record<string, { nombre: string; color: string }> = {
   comercial: { nombre: 'Comercial', color: '#e4002b' },
@@ -24,6 +25,11 @@ export function ComunicadoCard({ item }: { item: Contenido }) {
           </time>
         </div>
         <h3 className="mt-2 font-display text-lg font-bold leading-snug text-ink">{item.titulo}</h3>
+        {item.importancia && (
+          <p className="mt-2">
+            <InsigniaImportancia nivel={item.importancia} />
+          </p>
+        )}
         <div
           className="prosa mt-2 line-clamp-3 flex-1 text-sm"
           dangerouslySetInnerHTML={{ __html: htmlSeguro(item.cuerpo) }}

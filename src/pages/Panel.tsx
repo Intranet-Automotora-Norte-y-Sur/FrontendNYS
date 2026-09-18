@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { EditorContenido } from '../components/editor/EditorContenido';
 import { SugerenciasRedaccion } from '../components/editor/SugerenciasRedaccion';
 import { api } from '../lib/api';
-import type { Contenido, Seccion } from '../lib/contenido';
+import { IMPORTANCIAS, type Contenido, type Seccion } from '../lib/contenido';
 
 const SECCIONES: { valor: Seccion; nombre: string }[] = [
   { valor: 'comunicados', nombre: 'Comunicados' },
@@ -32,7 +32,44 @@ const CATEGORIAS = [
   { valor: 'rrhh', nombre: 'Gestión Humana' },
 ];
 
-const NUEVO = { seccion: 'comunicados' as Seccion, titulo: '', categoria: 'general', ancho: 'completo', estilo: 'estandar', cuerpo: '<p></p>', enlace: '', video_url: '', publicado: false };
+/** Campos que tienen efecto en cada sección.
+ *
+ *  El formulario mostraba los doce campos siempre, así que la Galería pedía
+ *  «nivel de importancia» y «video embebido», que su carrusel no lee. Mostrar
+ *  solo lo que la sección realmente pinta evita configurar cosas que después
+ *  no se ven por ninguna parte. */
+type Campo =
+  | 'cuerpo'
+  | 'portada'
+  | 'categoria'
+  | 'importancia'
+  | 'ancho'
+  | 'estilo'
+  | 'enlace'
+  | 'documentos'
+  | 'archivo'
+  | 'video';
+
+const COMPLETA: Campo[] = [
+  'cuerpo', 'portada', 'categoria', 'importancia', 'ancho', 'estilo',
+  'enlace', 'documentos', 'archivo', 'video',
+];
+
+const CAMPOS_POR_SECCION: Record<Seccion, Campo[]> = {
+  comunicados: COMPLETA,
+  beneficios: COMPLETA,
+  info_rrhh: COMPLETA,
+  reconocimientos: COMPLETA,
+  // Sin archivo ni video: son accesos a portales, no material descargable.
+  enlaces_toyota: [
+    'cuerpo', 'portada', 'categoria', 'importancia', 'ancho', 'estilo',
+    'enlace', 'documentos',
+  ],
+  // El carrusel del inicio solo consume título y foto.
+  galeria: ['portada'],
+};
+
+const NUEVO = { seccion: 'comunicados' as Seccion, titulo: '', categoria: 'general', importancia: '', ancho: 'completo', estilo: 'estandar', cuerpo: '<p></p>', enlace: '', video_url: '', publicado: false };
 
 export default function Panel() {
   const [items, setItems] = useState<Contenido[]>([]);
@@ -173,7 +210,10 @@ export default function Panel() {
         </p>
       )}
 
-      {editando && (
+      {editando && (() => {
+        const campos = CAMPOS_POR_SECCION[editando.seccion] ?? COMPLETA;
+        const muestra = (campo: Campo) => campos.includes(campo);
+        return (
         <div className="mt-6 max-w-3xl rounded-2xl border border-line bg-white p-6">
           <h2 className="font-display text-lg font-bold text-ink">
             {editando.id ? 'Editar contenido' : 'Nuevo contenido'}
@@ -201,6 +241,7 @@ export default function Panel() {
                 ))}
               </select>
             </div>
+            {muestra('categoria') && (
             <div>
               <label className="mb-1 block text-sm font-medium text-body" htmlFor="categoria">Categoría (color de la tarjeta)</label>
               <select
@@ -214,6 +255,27 @@ export default function Panel() {
                 ))}
               </select>
             </div>
+            )}
+            {muestra('importancia') && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-body" htmlFor="importancia">Nivel de importancia</label>
+              <select
+                id="importancia"
+                value={editando.importancia}
+                onChange={(e) => setEditando({ ...editando, importancia: e.target.value })}
+                className="rounded-lg border border-line px-3 py-2 outline-none focus:border-brand"
+              >
+                {IMPORTANCIAS.map(({ valor, nombre }) => (
+                  <option key={valor} value={valor}>{nombre}</option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-muted">
+                El colaborador lo ve como una insignia en la tarjeta. Útil en encuestas
+                con fecha límite; si todas llevan nivel, deja de significar algo.
+              </p>
+            </div>
+            )}
+            {muestra('ancho') && (
             <div>
               <label className="mb-1 block text-sm font-medium text-body" htmlFor="ancho">Ancho en la página</label>
               <select
@@ -228,6 +290,8 @@ export default function Panel() {
                 <option value="tercio">Un tercio</option>
               </select>
             </div>
+            )}
+            {muestra('estilo') && (
             <div>
               <label className="mb-1 block text-sm font-medium text-body" htmlFor="estilo">Estilo de la tarjeta</label>
               <select
@@ -241,8 +305,10 @@ export default function Panel() {
                 <option value="lado">Imagen al lado (imagen izquierda, texto derecha)</option>
               </select>
             </div>
+            )}
           </div>
 
+          {muestra('portada') && (<>
           <label className="mt-4 mb-1 block text-sm font-medium text-body" htmlFor="portada">
             Imagen de portada <span className="font-normal text-muted">(la foto de la tarjeta o de la galería)</span>
           </label>
@@ -253,7 +319,9 @@ export default function Panel() {
             onChange={(e) => setPortada(e.target.files?.[0] ?? null)}
             className="mb-1 block text-sm text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-surface file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-body hover:file:bg-line"
           />
+          </>)}
 
+          {muestra('enlace') && (<>
           <label className="mt-4 mb-1 block text-sm font-medium text-body" htmlFor="enlace">
             Enlace externo <span className="font-normal text-muted">(la tarjeta muestra botón «Ingresa aquí»)</span>
           </label>
@@ -265,7 +333,9 @@ export default function Panel() {
             onChange={(e) => setEditando({ ...editando, enlace: e.target.value })}
             className="w-full rounded-lg border border-line px-3 py-2 outline-none transition-colors duration-150 focus:border-brand"
           />
+          </>)}
 
+          {(muestra('archivo') || muestra('video')) && (
           <div className="mt-4 flex flex-wrap gap-6">
             <div>
               <label className="mb-1 block text-sm font-medium text-body" htmlFor="adjunto">
@@ -292,7 +362,9 @@ export default function Panel() {
               />
             </div>
           </div>
+          )}
 
+          {muestra('video') && (<>
           <label className="mt-4 mb-1 block text-sm font-medium text-body" htmlFor="video-url">
             Video embebido <span className="font-normal text-muted">(URL de YouTube o Vimeo — alternativa a subir archivo)</span>
           </label>
@@ -304,8 +376,9 @@ export default function Panel() {
             onChange={(e) => setEditando({ ...editando, video_url: e.target.value })}
             className="w-full rounded-lg border border-line px-3 py-2 outline-none transition-colors duration-150 focus:border-brand"
           />
+          </>)}
 
-          {editando.id && (
+          {muestra('documentos') && editando.id && (
             <div className="mt-5 rounded-xl border border-line bg-surface p-4">
               <p className="text-sm font-semibold text-ink">Documentos de la tarjeta</p>
               <p className="mt-0.5 text-xs text-muted">
@@ -364,24 +437,28 @@ export default function Panel() {
               </div>
             </div>
           )}
-          {!editando.id && (
+          {muestra('documentos') && !editando.id && (
             <p className="mt-4 rounded-lg bg-surface px-3 py-2 text-xs text-muted">
               Guarda la tarjeta primero; después podrás agregarle la lista de documentos descargables.
             </p>
           )}
 
-          <p className="mt-4 mb-1 text-sm font-medium text-body">Cuerpo</p>
-          <EditorContenido
-            html={editando.cuerpo}
-            onChange={(cuerpo) => setEditando((estado) => (estado ? { ...estado, cuerpo } : estado))}
-          />
+          {muestra('cuerpo') && (
+            <>
+              <p className="mt-4 mb-1 text-sm font-medium text-body">Cuerpo</p>
+              <EditorContenido
+                html={editando.cuerpo}
+                onChange={(cuerpo) => setEditando((estado) => (estado ? { ...estado, cuerpo } : estado))}
+              />
 
-          <SugerenciasRedaccion
-            cuerpo={editando.cuerpo}
-            onUsarTitular={(titulo) =>
-              setEditando((estado) => (estado ? { ...estado, titulo } : estado))
-            }
-          />
+              <SugerenciasRedaccion
+                cuerpo={editando.cuerpo}
+                onUsarTitular={(titulo) =>
+                  setEditando((estado) => (estado ? { ...estado, titulo } : estado))
+                }
+              />
+            </>
+          )}
 
           <label className="mt-4 flex items-center gap-2 text-sm text-body">
             <input
@@ -409,7 +486,8 @@ export default function Panel() {
             </button>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {items.length === 0 && (
         <p className="mt-8 max-w-3xl rounded-2xl border border-line bg-white p-8 text-center text-sm text-muted">
@@ -447,7 +525,7 @@ export default function Panel() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setEditando({ id: item.id, seccion: item.seccion, titulo: item.titulo, categoria: item.categoria ?? 'general', ancho: item.ancho ?? 'completo', estilo: item.estilo ?? 'estandar', cuerpo: item.cuerpo, enlace: item.enlace ?? '', video_url: item.video_url ?? '', publicado: item.publicado })}
+                  onClick={() => setEditando({ id: item.id, seccion: item.seccion, titulo: item.titulo, categoria: item.categoria ?? 'general', importancia: item.importancia ?? '', ancho: item.ancho ?? 'completo', estilo: item.estilo ?? 'estandar', cuerpo: item.cuerpo, enlace: item.enlace ?? '', video_url: item.video_url ?? '', publicado: item.publicado })}
                   className="text-sm font-medium text-info hover:underline"
                 >
                   Editar

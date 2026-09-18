@@ -23,6 +23,7 @@ const RUTAS = {
   flecha_izq: <path d="M15 6l-6 6 6 6" />,
   flecha_der: <path d="M9 6l6 6-6 6" />,
   pastel: <path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1M2 21h20M7 8v3m5-3v3m5-3v3M7 4h.01M12 4h.01M17 4h.01" />,
+  enviar: <path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z" />,
 } as const;
 
 export function Icono({ nombre, className = 'h-[18px] w-[18px]' }: Props) {

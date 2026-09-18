@@ -20,11 +20,29 @@ export interface Adjunto {
   tamano?: number | null;
 }
 
+/** Nivel de importancia de una tarjeta. Cadena vacía = sin insignia, que es lo
+ *  que lleva la mayoría: si todas la tuvieran, dejaría de significar algo. */
+export type Importancia = '' | 'baja' | 'media' | 'alta';
+
+export const IMPORTANCIAS: { valor: Importancia; nombre: string; color: string }[] = [
+  { valor: '', nombre: 'Sin nivel de importancia', color: '' },
+  { valor: 'baja', nombre: 'Baja', color: '#6b7280' },
+  { valor: 'media', nombre: 'Media', color: '#d97706' },
+  { valor: 'alta', nombre: 'Alta', color: '#e4002b' },
+];
+
+export function importancia(valor?: string) {
+  if (!valor) return null;
+  return IMPORTANCIAS.find((i) => i.valor === valor) ?? null;
+}
+
 export interface Contenido {
   id: number;
   seccion: Seccion;
   titulo: string;
   categoria?: string;
+  /** Vacío o ausente = la tarjeta no muestra insignia. */
+  importancia?: Importancia;
   ancho?: 'completo' | 'dostercios' | 'medio' | 'tercio';
   /** 'mosaico' usa la portada como fondo; 'lado' pone la imagen junto al texto. */
   estilo?: 'estandar' | 'mosaico' | 'lado';

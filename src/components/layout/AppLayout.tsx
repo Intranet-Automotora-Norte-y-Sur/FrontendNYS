@@ -1,9 +1,9 @@
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import logo from '../../assets/logo.png';
 import { useAuth } from '../../hooks/useAuth';
+import { useCasosAsignados } from '../../hooks/useCasosAsignados';
 import { CambiarContrasena } from '../cuenta/CambiarContrasena';
-import { Asistente } from '../asistente/Asistente';
 import { ToastEnlaces } from './ToastEnlaces';
 import { Icono, type NombreIcono } from '../ui/Icono';
 
@@ -11,6 +11,8 @@ interface ItemNav {
   a: string;
   icono: NombreIcono;
   txt: string;
+  /** Distintivo a la derecha del nombre, como la etiqueta «IA». */
+  etiqueta?: string;
 }
 
 const GRUPOS: { titulo: string; items: ItemNav[] }[] = [
@@ -18,6 +20,7 @@ const GRUPOS: { titulo: string; items: ItemNav[] }[] = [
     titulo: 'Principal',
     items: [
       { a: '/', icono: 'inicio', txt: 'Inicio' },
+      { a: '/asistente', icono: 'chispas', txt: 'Asistente IA', etiqueta: 'IA' },
       { a: '/comunicados', icono: 'megafono', txt: '¿Qué está ocurriendo?' },
     ],
   },
@@ -43,6 +46,7 @@ const GRUPOS: { titulo: string; items: ItemNav[] }[] = [
 
 const TITULOS: Record<string, { titulo: string; sub: string }> = {
   '/': { titulo: 'Inicio', sub: 'Comunicados y accesos rápidos' },
+  '/asistente': { titulo: 'Asistente IA', sub: 'Pregunta en lenguaje natural sobre la intranet' },
   '/comunicados': { titulo: '¿Qué está ocurriendo?', sub: 'Noticias y anuncios de la empresa' },
   '/beneficios': { titulo: 'Beneficios', sub: 'Convenios para ti y tu familia' },
   '/certificados': { titulo: 'Mis certificados', sub: 'Genera y descarga tus documentos' },
@@ -54,8 +58,9 @@ const TITULOS: Record<string, { titulo: string; sub: string }> = {
   '/enlaces': { titulo: 'Enlaces Toyota', sub: 'Herramientas y portales de marca' },
   '/panel': { titulo: 'Panel de edición', sub: 'Gestión de contenido' },
   '/administracion': { titulo: 'Administración', sub: 'Cuentas de colaboradores y editores' },
+  '/ingresos': { titulo: 'Ingresos a la intranet', sub: 'Seguimiento de uso por colaborador' },
   '/buzon': { titulo: 'Buzón Digital de Ideas', sub: 'Informe y gestión de los casos' },
-  '/buscar': { titulo: 'Búsqueda', sub: 'Resultados en la intranet' },
+  '/mis-casos': { titulo: 'Mis casos', sub: 'Solicitudes del buzón asignadas a ti' },
 };
 
 function claseNav({ isActive }: { isActive: boolean }) {
@@ -67,12 +72,12 @@ export function AppLayout() {
   const { usuario, logout } = useAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const [busqueda, setBusqueda] = useState('');
   const [cambiandoClave, setCambiandoClave] = useState(false);
   // El aviso invita a cambiar la clave inicial, nunca obliga: se puede apartar
   // y no vuelve a aparecer en lo que queda de sesión.
   const [avisoApartado, setAvisoApartado] = useState(false);
   const mostrarAvisoClave = Boolean(usuario?.usa_clave_inicial) && !avisoApartado;
+  const casosAsignados = useCasosAsignados();
 
   const encabezado = TITULOS[pathname] ?? { titulo: 'Intranet', sub: '' };
   const iniciales = (usuario?.nombre ?? '')
@@ -82,53 +87,76 @@ export function AppLayout() {
     .join('')
     .toUpperCase();
 
-  const buscar = (e: FormEvent) => {
-    e.preventDefault();
-    const consulta = busqueda.trim();
-    if (consulta) navigate(`/buscar?q=${encodeURIComponent(consulta)}`);
-  };
-
   const salir = async () => {
     await logout();
     navigate('/login');
   };
 
-  const abrirAsistente = () => window.dispatchEvent(new CustomEvent('abrir-asistente'));
-
   return (
     <div className="flex min-h-screen">
       <aside className="flex w-64 shrink-0 flex-col bg-ink text-white">
-        <div className="flex items-center gap-3 px-5 py-6">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand font-display text-sm font-extrabold">
-            NS
-          </span>
-          <div className="min-w-0">
-            <img src={logo} alt="Norte y Sur" className="h-5 w-auto invert" />
-            <p className="mt-0.5 text-[10px] uppercase tracking-[0.25em] text-faint">Intranet</p>
+        <div className="border-b border-white/5 px-4 pb-4 pt-5">
+          {/* Placa gris carbón, no roja: el rojo de marca queda reservado para
+              el ítem activo del menú y las llamadas a la acción. */}
+          <div className="grid place-items-center rounded-2xl bg-ink-2 px-4 py-6">
+            <img src={logo} alt="Norte y Sur" className="h-14 w-auto invert" />
           </div>
+          <p className="mt-3 text-center text-[10px] font-semibold uppercase tracking-[0.3em] text-faint">
+            Intranet corporativa
+          </p>
         </div>
 
         <nav aria-label="Navegación principal" className="flex-1 overflow-y-auto px-3 pb-4">
-          {GRUPOS.map(({ titulo, items }, indice) => (
+          {GRUPOS.map(({ titulo, items }) => (
             <div key={titulo}>
               <p className="mb-1.5 mt-4 px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted">
                 {titulo}
               </p>
-              {items.map(({ a, icono, txt }) => (
+              {items.map(({ a, icono, txt, etiqueta }) => (
                 <NavLink key={a} to={a} end={a === '/'} className={claseNav}>
-                  <Icono nombre={icono} />
-                  {txt}
+                  {({ isActive }) => (
+                    <>
+                      <Icono nombre={icono} />
+                      {txt}
+                      {etiqueta && (
+                        <span
+                          className={`ml-auto rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                            isActive ? 'bg-white/20 text-white' : 'bg-brand text-white'
+                          }`}
+                        >
+                          {etiqueta}
+                        </span>
+                      )}
+                    </>
+                  )}
                 </NavLink>
               ))}
-              {indice === 0 && (
-                <button type="button" onClick={abrirAsistente} className={`${claseNav({ isActive: false })} w-full`}>
-                  <Icono nombre="chispas" />
-                  Asistente IA
-                  <span className="ml-auto rounded bg-brand px-1.5 py-0.5 text-[10px] font-bold">IA</span>
-                </button>
-              )}
             </div>
           ))}
+          {/* Solo para quien tenga alguno: un enlace vacío para doscientas
+              personas que nunca reciben un caso es ruido en el menú. */}
+          {casosAsignados > 0 && (
+            <div>
+              <p className="mb-1.5 mt-4 px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted">
+                Asignado a mí
+              </p>
+              <NavLink to="/mis-casos" className={claseNav}>
+                {({ isActive }) => (
+                  <>
+                    <Icono nombre="chat" />
+                    Mis casos
+                    <span
+                      className={`ml-auto rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                        isActive ? 'bg-white/20 text-white' : 'bg-brand text-white'
+                      }`}
+                    >
+                      {casosAsignados}
+                    </span>
+                  </>
+                )}
+              </NavLink>
+            </div>
+          )}
           {usuario && usuario.rol !== 'colaborador' && (
             <div>
               <p className="mb-1.5 mt-4 px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted">
@@ -143,6 +171,10 @@ export function AppLayout() {
                   <NavLink to="/administracion" className={claseNav}>
                     <Icono nombre="personas" />
                     Administración
+                  </NavLink>
+                  <NavLink to="/ingresos" className={claseNav}>
+                    <Icono nombre="grafica" />
+                    Ingresos a la intranet
                   </NavLink>
                   <NavLink to="/buzon" className={claseNav}>
                     <Icono nombre="documento" />
@@ -162,19 +194,7 @@ export function AppLayout() {
             <p className="truncate text-xs text-muted">{encabezado.sub}</p>
           </div>
 
-          <form onSubmit={buscar} className="ml-auto w-32 max-w-xs flex-1 sm:w-auto">
-            <label htmlFor="buscador" className="sr-only">Buscar en la intranet</label>
-            <input
-              id="buscador"
-              type="search"
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="🔍 Buscar en la intranet…"
-              className="w-full rounded-full border border-line bg-surface px-4 py-1.5 text-sm outline-none transition-colors duration-150 focus:border-brand focus:bg-white"
-            />
-          </form>
-
-          <div className="flex items-center gap-2.5">
+          <div className="ml-auto flex items-center gap-2.5">
             <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand text-xs font-bold text-white">
               {iniciales || '·'}
             </span>
@@ -230,7 +250,6 @@ export function AppLayout() {
           <Outlet />
         </main>
         {cambiandoClave && <CambiarContrasena onCerrar={() => setCambiandoClave(false)} />}
-        <Asistente />
         <ToastEnlaces />
       </div>
     </div>
